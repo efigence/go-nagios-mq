@@ -12,6 +12,7 @@ DEADJOE
 _vendor/
 vendor/
 *\.test
+send_check
 tags
 TAGS
 

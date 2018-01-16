@@ -1,13 +1,13 @@
 # generate version number
 version=$(shell git describe --tags --long --always --dirty|sed 's/^v//')
-objects = mq2nagcmd
+objects = mq2nagcmd send_check
 
 all: vendor $(objects) | glide.lock
 	-@go fmt
 
 .PHONY: *.go
 %: %.go
-	go build -ldflags "-X main.version=$(version)" $(objects).go
+	go build -ldflags "-X main.version=$(version)" $@.go
 
 
 static: glide.lock vendor
