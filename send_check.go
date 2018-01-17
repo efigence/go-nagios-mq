@@ -11,6 +11,8 @@ import (
 	"github.com/op/go-logging"
 	"github.com/urfave/cli"
 	"github.com/zerosvc/go-zerosvc"
+	"strings"
+	"time"
 )
 
 var version string
@@ -41,7 +43,7 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:  "topic-prefix,topic",
-			Value: "check.results.",
+			Value: "check.results",
 			Usage: "topic prefix to send msg to",
 		},
 	}
@@ -62,31 +64,51 @@ func main() {
 				log.Warningf("bad cmd: %s", err)
 				continue
 			}
+			ev := zerosvc.NewEvent()
+			var path string
 			switch cmd {
 			case nagios.CmdProcessHostCheckResult:
 				host, err := nagios.NewHostFromArgs(args)
+				host.LastCheck = time.Now()
 				if err != nil {
 					log.Warningf("Error when parsing host check: %s")
 					continue
 				}
-				ev := zerosvc.NewEvent()
 				ev.Headers["host"] = host.Hostname
-				ev.Body, err = json.Marshal(host)
-				ev.Prepare()
-				mq.SendEvent(c.GlobalString("topic-prefix")+".host."+host.Hostname, ev)
+				ev.Body, _ = json.Marshal(host)
+				path = c.GlobalString("topic-prefix") + ".host." + host.Hostname
 
 			case nagios.CmdProcessServiceCheckResult:
 				service, err := nagios.NewServiceFromArgs(args)
+				service.LastCheck = time.Now()
 				if err != nil {
 					log.Warningf("Error when parsing service check: %s")
 				}
 
-				ev := zerosvc.NewEvent()
 				ev.Headers["host"] = service.Hostname
-				//ev.Body, err = json.Marshal(service)
-				ev.Prepare()
-				mq.SendEvent(c.GlobalString("topic-prefix")+".service."+service.Hostname, ev)
+				ev.Headers["service"] = service.Description
+				ev.Body, _ = json.Marshal(service)
+				path = c.GlobalString("topic-prefix") + ".service." + service.Hostname
+			default:
+				if cmd == strings.ToUpper(cmd) && len(args) > 0 {
+					path = c.GlobalString("topic-prefix") + ".command"
+					ev.Body, _ = json.Marshal(args)
+				} else {
+					err = fmt.Errorf("unsupported cmd [%s] with args [%+v]", cmd, args)
+				}
+
 			}
+			ev.Headers["command"] = cmd
+			if err != nil {
+				log.Warningf("Error when sending command: %s", err)
+				continue
+			}
+			//event, err = json.Marshal(ev)
+			if err != nil {
+				log.Warningf("Marshall error: %s", err)
+				continue
+			}
+			mq.SendEvent(path, ev)
 		}
 		return nil
 	}

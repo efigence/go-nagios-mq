@@ -3,7 +3,9 @@ package main
 import (
 	"os"
 
+	"encoding/json"
 	"fmt"
+	"github.com/efigence/go-nagios"
 	"github.com/op/go-logging"
 	"github.com/urfave/cli"
 	"github.com/zerosvc/go-zerosvc"
@@ -76,10 +78,32 @@ func MainLoop(c *cli.Context) error {
 	if err != nil {
 		log.Errorf("can't connect to queue: %s")
 	}
-	ev, err := node.GetEventsCh(c.GlobalString("topic"))
+	events, err := node.GetEventsCh(c.GlobalString("topic"))
 	go func() {
-		for {
-			fmt.Printf("%+v", <-ev)
+		for ev := range events {
+			if cmd, ok := ev.Headers["command"]; ok {
+				switch cmd {
+				case nagios.CmdProcessHostCheckResult:
+					host := nagios.NewHost()
+					err := json.Unmarshal(ev.Body, &host)
+					if err != nil {
+						log.Warningf("Error when decoding host check: %s", err)
+						continue
+					}
+					fmt.Println(nagios.EncodeHostCheck(host))
+
+				case nagios.CmdProcessServiceCheckResult:
+					service := nagios.NewService()
+					err := json.Unmarshal(ev.Body, &service)
+					if err != nil {
+						log.Warningf("Error when decoding host check: %s", err)
+						continue
+					}
+					fmt.Println(nagios.EncodeServiceCheck(service))
+				default:
+					log.Warningf("Cmd not supported: %s", cmd)
+				}
+			}
 		}
 	}()
 	return nil
