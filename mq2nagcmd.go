@@ -114,15 +114,19 @@ func MainLoop(c *cli.Context) error {
 		log.Errorf("can't open nagios cmd file [%s], %s", c.GlobalString("cmd-file"), err)
 		return fmt.Errorf("error opening cmd file")
 	}
-	selfcheck.UpdateStatus(nagios.StateOk, "Running")
+	selfcheck.UpdateStatus(nagios.StateOk, fmt.Sprintf("Running v%s", version))
 	if !c.Bool("disable-selfcheck") {
 		log.Notice("Generating selfcheck event every minute")
 		go RunSelfcheck(cmdPipe, &selfcheck)
 	}
-	log.Noticef("Connected to MQ and cmd file, entering main loop [v%s]", version)
+	log.Notice("Connected to MQ and cmd file, entering main loop")
 	go func() {
+
 		for ev := range events {
 			if cmd, ok := ev.Headers["command"]; ok {
+				send := false
+
+				var cmdArgs string
 				switch cmd {
 				case nagios.CmdProcessHostCheckResult:
 					host := nagios.NewHost()
@@ -131,7 +135,8 @@ func MainLoop(c *cli.Context) error {
 						log.Warningf("Error when decoding host check: %s", err)
 						continue
 					}
-					cmdPipe.Send(nagios.CmdProcessHostCheckResult, host.MarshalCmd())
+					cmdArgs = host.MarshalCmd()
+					send = true
 
 				case nagios.CmdProcessServiceCheckResult:
 					service := nagios.NewService()
@@ -140,13 +145,21 @@ func MainLoop(c *cli.Context) error {
 						log.Warningf("Error when decoding host check: %s", err)
 						continue
 					}
-					cmdPipe.Send(nagios.CmdProcessServiceCheckResult, service.MarshalCmd())
+					cmdArgs = service.MarshalCmd()
+					send = true
 
 				default:
 					log.Warningf("Cmd not supported: %s", cmd)
 				}
 				if debug {
-					log.Debugf("Got command [%s] with args [%+v}", cmd, ev)
+					log.Debugf("Got command [%s] with args [%s", cmd, cmdArgs)
+				}
+				if send {
+					err := cmdPipe.Send(cmd.(string), cmdArgs)
+					if err != nil {
+						log.Errorf("Error while writing to cmdfile, exiting: %s", err)
+					}
+					end <- true
 				}
 
 			}
