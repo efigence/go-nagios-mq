@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"encoding/json"
+	"fmt"
 	"github.com/efigence/go-nagios"
 	"github.com/op/go-logging"
 	"github.com/urfave/cli"
@@ -81,11 +82,15 @@ func main() {
 		selfcheck.Hostname = c.String("selfcheck-host")
 		selfcheck.Description = c.String("selfcheck-service")
 		debug = c.Bool("debug")
-		MainLoop(c)
-		return nil
+		return MainLoop(c)
 	}
-	app.Run(os.Args)
-	_ = <-end
+	err := app.Run(os.Args)
+	if err != nil {
+		log.Errorf("exiting: %s", err)
+		os.Exit(1)
+
+	}
+
 }
 
 func MainLoop(c *cli.Context) error {
@@ -107,8 +112,7 @@ func MainLoop(c *cli.Context) error {
 	cmdPipe, err := nagios.NewCmd(c.GlobalString("cmd-file"))
 	if err != nil {
 		log.Errorf("can't open nagios cmd file [%s], %s", c.GlobalString("cmd-file"), err)
-		end <- true
-		return nil
+		return fmt.Errorf("error opening cmd file")
 	}
 	selfcheck.UpdateStatus(nagios.StateOk, "Running")
 	if !c.Bool("disable-selfcheck") {
@@ -148,6 +152,7 @@ func MainLoop(c *cli.Context) error {
 			}
 		}
 	}()
+	_ = <-end
 	return nil
 }
 

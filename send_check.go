@@ -63,7 +63,7 @@ func main() {
 			),
 		)
 		if err != nil {
-			log.Errorf("can't connect to queue: %s")
+			log.Errorf("can't connect to queue: %s", err)
 		}
 		scanner := bufio.NewScanner(os.Stdin)
 		for scanner.Scan() {
