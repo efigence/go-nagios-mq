@@ -46,16 +46,25 @@ func main() {
 			Value: "check.results",
 			Usage: "topic prefix to send msg to",
 		},
+		cli.StringFlag{
+			Name:  "exchange",
+			Value: "monitoring",
+			Usage: "exchange to receive events on",
+		},
 	}
 	app.Action = func(c *cli.Context) error {
 		hostname, _ := os.Hostname()
-		mq := zerosvc.NewNode("send_check@" + hostname)
-		tr := zerosvc.NewTransport(zerosvc.TransportAMQP, c.GlobalString("amqp-url"))
-		err := tr.Connect()
+		mq, err := zerosvc.New("send-check@"+hostname,
+			zerosvc.TransportAMQP(
+				c.GlobalString("amqp-url"),
+				zerosvc.TransportAMQPConfig{
+					EventExchange: c.GlobalString("exchange"),
+				},
+			),
+		)
 		if err != nil {
-			fmt.Errorf("Error when connection to M")
+			log.Errorf("can't connect to queue: %s")
 		}
-		mq.SetTransport(tr)
 		scanner := bufio.NewScanner(os.Stdin)
 		for scanner.Scan() {
 			line := scanner.Text()
@@ -65,6 +74,7 @@ func main() {
 				continue
 			}
 			ev := zerosvc.NewEvent()
+			ev.Headers["client-version"] = "send_check-" + version
 			var path string
 			switch cmd {
 			case nagios.CmdProcessHostCheckResult:

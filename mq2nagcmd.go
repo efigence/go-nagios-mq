@@ -15,6 +15,7 @@ var version string
 var log = logging.MustGetLogger("main")
 var stdout_log_format = logging.MustStringFormatter("%{color:bold}%{time:2006-01-02T15:04:05.0000Z-07:00}%{color:reset}%{color} [%{level:.1s}] %{color:reset}%{shortpkg}[%{longfunc}] %{message}")
 var end chan bool
+var debug = false
 
 var selfcheck = nagios.NewService()
 
@@ -61,6 +62,10 @@ func main() {
 			Name:  "disable-selfcheck",
 			Usage: "By default, selfcheck event (with current hostname) will be generated every minute. This flag disables that",
 		},
+		cli.BoolFlag{
+			Name:  "debug",
+			Usage: "Debug",
+		},
 		cli.StringFlag{
 			Name:  "selfcheck-host",
 			Usage: "Self-check hostname",
@@ -75,6 +80,7 @@ func main() {
 	app.Action = func(c *cli.Context) error {
 		selfcheck.Hostname = c.String("selfcheck-host")
 		selfcheck.Description = c.String("selfcheck-service")
+		debug = c.Bool("debug")
 		MainLoop(c)
 		return nil
 	}
@@ -88,8 +94,9 @@ func MainLoop(c *cli.Context) error {
 		zerosvc.TransportAMQP(
 			c.GlobalString("amqp-url"),
 			zerosvc.TransportAMQPConfig{
-				SharedQueue: c.GlobalBool("shared-queue"),
-				QueueTTL:    1000 * 86400,
+				SharedQueue:   c.GlobalBool("shared-queue"),
+				QueueTTL:      1000 * 86400,
+				EventExchange: c.GlobalString("exchange"),
 			},
 		),
 	)
@@ -108,7 +115,7 @@ func MainLoop(c *cli.Context) error {
 		log.Notice("Generating selfcheck event every minute")
 		go RunSelfcheck(cmdPipe, &selfcheck)
 	}
-	log.Notice("Connected to MQ and cmd file, entering main loop")
+	log.Noticef("Connected to MQ and cmd file, entering main loop [v%s]", version)
 	go func() {
 		for ev := range events {
 			if cmd, ok := ev.Headers["command"]; ok {
@@ -120,7 +127,7 @@ func MainLoop(c *cli.Context) error {
 						log.Warningf("Error when decoding host check: %s", err)
 						continue
 					}
-					cmdPipe.Send(nagios.CmdProcessHostCheckResult, nagios.EncodeHostCheck(host))
+					cmdPipe.Send(nagios.CmdProcessHostCheckResult, host.MarshalCmd())
 
 				case nagios.CmdProcessServiceCheckResult:
 					service := nagios.NewService()
@@ -129,10 +136,15 @@ func MainLoop(c *cli.Context) error {
 						log.Warningf("Error when decoding host check: %s", err)
 						continue
 					}
+					cmdPipe.Send(nagios.CmdProcessServiceCheckResult, service.MarshalCmd())
 
 				default:
 					log.Warningf("Cmd not supported: %s", cmd)
 				}
+				if debug {
+					log.Debugf("Got command [%s] with args [%+v}", cmd, ev)
+				}
+
 			}
 		}
 	}()
