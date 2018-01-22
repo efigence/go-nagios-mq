@@ -106,7 +106,8 @@ func MainLoop(c *cli.Context) error {
 		),
 	)
 	if err != nil {
-		log.Errorf("can't connect to queue: %s")
+		log.Errorf("can't connect to queue: %s", err)
+		os.Exit(1)
 	}
 	events, err := node.GetEventsCh(c.GlobalString("topic"))
 	cmdPipe, err := nagios.NewCmd(c.GlobalString("cmd-file"))
