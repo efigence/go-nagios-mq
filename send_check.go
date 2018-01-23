@@ -7,12 +7,14 @@ import (
 	"bufio"
 
 	"encoding/json"
+	"strings"
+	"time"
+
 	nagios "github.com/efigence/go-nagios"
+	"github.com/efigence/go-nagios-mq/utils"
 	"github.com/op/go-logging"
 	"github.com/urfave/cli"
 	"github.com/zerosvc/go-zerosvc"
-	"strings"
-	"time"
 )
 
 var version string
@@ -73,8 +75,7 @@ func main() {
 				log.Warningf("bad cmd: %s", err)
 				continue
 			}
-			ev := zerosvc.NewEvent()
-			ev.Headers["client-version"] = "send_check-" + version
+			var ev zerosvc.Event
 			var path string
 			switch cmd {
 			case nagios.CmdProcessHostCheckResult:
@@ -84,6 +85,7 @@ func main() {
 					log.Warningf("Error when parsing host check: %s")
 					continue
 				}
+				ev := utils.HostToEvent(mq, host)
 				ev.Headers["host"] = host.Hostname
 				ev.Body, _ = json.Marshal(host)
 				path = c.GlobalString("topic-prefix") + ".host." + host.Hostname
@@ -94,10 +96,7 @@ func main() {
 				if err != nil {
 					log.Warningf("Error when parsing service check: %s")
 				}
-
-				ev.Headers["host"] = service.Hostname
-				ev.Headers["service"] = service.Description
-				ev.Body, _ = json.Marshal(service)
+				ev = utils.ServiceToEvent(mq, service)
 				path = c.GlobalString("topic-prefix") + ".service." + service.Hostname
 			default:
 				if cmd == strings.ToUpper(cmd) && len(args) > 0 {
@@ -108,6 +107,7 @@ func main() {
 				}
 
 			}
+			ev.Headers["client-version"] = "send_check-" + version
 			ev.Headers["command"] = cmd
 			if err != nil {
 				log.Warningf("Error when sending command: %s", err)

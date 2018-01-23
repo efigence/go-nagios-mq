@@ -1,3 +1,5 @@
-package: .
+package: github.com/efigence/go-nagios-mq
 import:
 - package: github.com/op/go-logging
+- package: github.com/efigence/go-nagios
+- package: github.com/urfave/cli

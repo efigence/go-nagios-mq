@@ -1,6 +1,25 @@
-hash: 3db27418912ea9485d821cd71b6c73bb495a37767f12d96bbdc49eb76780c850
-updated: 2016-12-21T18:43:26.067493018+01:00
+hash: 9a2e23b4d69b69f5fd0f517d3d92cff12196f219b61fc8972432de3b775244ac
+updated: 2018-01-23T11:22:59.565207015+01:00
 imports:
+- name: github.com/eclipse/paho.mqtt.golang
+  version: bab87cde322cf9aec420645d1e9801d0f216f791
+  subpackages:
+  - packets
+- name: github.com/efigence/go-nagios
+  version: 7e5c1a3179d548fd04c6f1f580ad46da2682d4be
 - name: github.com/op/go-logging
   version: 970db520ece77730c7e4724c61121037378659d9
+- name: github.com/satori/go.uuid
+  version: 36e9d2ebbde5e3f13ab2e25625fd453271d6522e
+- name: github.com/streadway/amqp
+  version: 54ded0531dfd699a7893861d39a7a949c5749bc9
+- name: github.com/urfave/cli
+  version: 75104e932ac2ddb944a6ea19d9f9f26316ff1145
+- name: github.com/zerosvc/go-zerosvc
+  version: e229a8e90859aac0ca07ca8edde466130d3b5b3b
+- name: golang.org/x/net
+  version: 5ccada7d0a7ba9aeb5d3aca8d3501b4c2a509fec
+  subpackages:
+  - proxy
+  - websocket
 testImports: []

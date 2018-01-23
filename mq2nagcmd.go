@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/efigence/go-nagios"
+	"github.com/efigence/go-nagios-mq/utils"
 	"github.com/op/go-logging"
 	"github.com/urfave/cli"
 	"github.com/zerosvc/go-zerosvc"
@@ -51,9 +52,9 @@ func main() {
 			Usage: "exchange to receive events on",
 		},
 		cli.StringFlag{
-			Name:  "topic",
-			Value: "check.results.#",
-			Usage: "topic to subscribe to",
+			Name:  "topic-prefix",
+			Value: "check.results",
+			Usage: "topic prefix",
 		},
 		cli.BoolFlag{
 			Name:  "shared-queue,shared",
@@ -109,7 +110,7 @@ func MainLoop(c *cli.Context) error {
 		log.Errorf("can't connect to queue: %s", err)
 		os.Exit(1)
 	}
-	events, err := node.GetEventsCh(c.GlobalString("topic"))
+	events, err := node.GetEventsCh(c.GlobalString("topic-prefix") + ".#")
 	cmdPipe, err := nagios.NewCmd(c.GlobalString("cmd-file"))
 	if err != nil {
 		log.Errorf("can't open nagios cmd file [%s], %s", c.GlobalString("cmd-file"), err)
@@ -118,7 +119,7 @@ func MainLoop(c *cli.Context) error {
 	selfcheck.UpdateStatus(nagios.StateOk, fmt.Sprintf("Running v%s", version))
 	if !c.Bool("disable-selfcheck") {
 		log.Notice("Generating selfcheck event every minute")
-		go RunSelfcheck(cmdPipe, &selfcheck)
+		go RunSelfcheck(node, c.GlobalString("topic-prefix")+".service.mq2nagcmd")
 	}
 	log.Notice("Connected to MQ and cmd file, entering main loop")
 	go func() {
@@ -126,7 +127,6 @@ func MainLoop(c *cli.Context) error {
 		for ev := range events {
 			if cmd, ok := ev.Headers["command"]; ok {
 				send := false
-
 				var cmdArgs string
 				switch cmd {
 				case nagios.CmdProcessHostCheckResult:
@@ -148,31 +148,37 @@ func MainLoop(c *cli.Context) error {
 					}
 					cmdArgs = service.MarshalCmd()
 					send = true
-
 				default:
 					log.Warningf("Cmd not supported: %s", cmd)
 				}
 				if debug {
-					log.Debugf("Got command [%s] with args [%s", cmd, cmdArgs)
+					log.Debugf("Got command [%s] with args [%s]", cmd, cmdArgs)
 				}
 				if send {
 					err := cmdPipe.Send(cmd.(string), cmdArgs)
 					if err != nil {
 						log.Errorf("Error while writing to cmdfile, exiting: %s", err)
+						end <- true
 					}
-					end <- true
 				}
 
+			} else {
+				log.Warningf("Got unknown event with no 'command' header: %+v|%s", ev, ev.Body)
 			}
 		}
 	}()
 	_ = <-end
+	log.Notice("Exiting main loop")
 	return nil
 }
 
-func RunSelfcheck(cmdPipe *nagios.Command, check *nagios.Service) {
+func RunSelfcheck(node *zerosvc.Node, path string) {
 	for {
-		cmdPipe.Send(nagios.CmdProcessServiceCheckResult, nagios.EncodeServiceCheck(*check))
+		ev := utils.ServiceToEvent(node, selfcheck)
+		ev.Headers["client-version"] = "mq2nagcmd-" + version
+		log.Debugf("sending selfcheck to [%s]", path)
+		ev.Prepare()
+		node.SendEvent(path, ev)
 		time.Sleep(time.Minute)
 	}
 }
