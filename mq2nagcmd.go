@@ -10,6 +10,7 @@ import (
 	"github.com/op/go-logging"
 	"github.com/urfave/cli"
 	"github.com/zerosvc/go-zerosvc"
+	"strings"
 	"time"
 )
 
@@ -63,6 +64,10 @@ func main() {
 		cli.BoolFlag{
 			Name:  "disable-selfcheck",
 			Usage: "By default, selfcheck event (with current hostname) will be generated every minute. This flag disables that",
+		},
+		cli.BoolFlag{
+			Name:  "strip-fqdn",
+			Usage: "remove part of hostname after dot",
 		},
 		cli.BoolFlag{
 			Name:  "debug",
@@ -122,6 +127,7 @@ func MainLoop(c *cli.Context) error {
 		go RunSelfcheck(node, c.GlobalString("topic-prefix")+".service.mq2nagcmd")
 	}
 	log.Notice("Connected to MQ and cmd file, entering main loop")
+	stripFqdn := c.Bool("strip-fqdn")
 	go func() {
 
 		for ev := range events {
@@ -136,6 +142,10 @@ func MainLoop(c *cli.Context) error {
 						log.Warningf("Error when decoding host check: %s", err)
 						continue
 					}
+					if stripFqdn && strings.Contains(host.Hostname, ".") {
+						parts := strings.Split(host.Hostname, ".")
+						host.Hostname = parts[0]
+					}
 					cmdArgs = host.MarshalCmd()
 					send = true
 
@@ -146,6 +156,11 @@ func MainLoop(c *cli.Context) error {
 						log.Warningf("Error when decoding host check: %s", err)
 						continue
 					}
+					if stripFqdn && strings.Contains(service.Hostname, ".") {
+						parts := strings.Split(service.Hostname, ".")
+						service.Hostname = parts[0]
+					}
+
 					cmdArgs = service.MarshalCmd()
 					send = true
 				default:
@@ -176,7 +191,9 @@ func RunSelfcheck(node *zerosvc.Node, path string) {
 	for {
 		ev := utils.ServiceToEvent(node, selfcheck)
 		ev.Headers["client-version"] = "mq2nagcmd-" + version
-		log.Debugf("sending selfcheck to [%s]", path)
+		if debug {
+			log.Debugf("sending selfcheck to [%s]", path)
+		}
 		ev.Prepare()
 		node.SendEvent(path, ev)
 		time.Sleep(time.Minute)

@@ -1,12 +1,12 @@
-hash: 9a2e23b4d69b69f5fd0f517d3d92cff12196f219b61fc8972432de3b775244ac
-updated: 2018-01-23T11:22:59.565207015+01:00
+hash: fa30200b59054e4072765f297393bee7dca9d2ee7e4730bbff1afec38a5c26c2
+updated: 2018-01-23T14:00:55.399707243+01:00
 imports:
 - name: github.com/eclipse/paho.mqtt.golang
   version: bab87cde322cf9aec420645d1e9801d0f216f791
   subpackages:
   - packets
 - name: github.com/efigence/go-nagios
-  version: 7e5c1a3179d548fd04c6f1f580ad46da2682d4be
+  version: f2a79d0c070259301c76667148357c5d56e10f8f
 - name: github.com/op/go-logging
   version: 970db520ece77730c7e4724c61121037378659d9
 - name: github.com/satori/go.uuid

@@ -53,6 +53,10 @@ func main() {
 			Value: "monitoring",
 			Usage: "exchange to receive events on",
 		},
+		cli.BoolFlag{
+			Name:  "emulate-send-nsca",
+			Usage: "Emulate how send_nsca works (tab-delimited, guess if it is host or service check based on number of elements",
+		},
 	}
 	app.Action = func(c *cli.Context) error {
 		hostname, _ := os.Hostname()
@@ -68,60 +72,97 @@ func main() {
 			log.Errorf("can't connect to queue: %s", err)
 		}
 		scanner := bufio.NewScanner(os.Stdin)
+		var LineHandler func(mq *zerosvc.Node, c *cli.Context, line string) (err error)
+		if c.Bool("emulate-send-nsca") {
+			LineHandler = HandleSendNcsa
+		} else {
+			LineHandler = HandleNagiosCmdLine
+		}
 		for scanner.Scan() {
 			line := scanner.Text()
-			cmd, args, err := nagios.DecodeNagiosCmd(line)
+			err := LineHandler(mq, c, line)
 			if err != nil {
-				log.Warningf("bad cmd: %s", err)
-				continue
+				log.Errorf("error when parsing [%s]: %s", line, err)
 			}
-			var ev zerosvc.Event
-			var path string
-			switch cmd {
-			case nagios.CmdProcessHostCheckResult:
-				host, err := nagios.NewHostFromArgs(args)
-				host.LastCheck = time.Now()
-				if err != nil {
-					log.Warningf("Error when parsing host check: %s")
-					continue
-				}
-				ev := utils.HostToEvent(mq, host)
-				ev.Headers["host"] = host.Hostname
-				ev.Body, _ = json.Marshal(host)
-				path = c.GlobalString("topic-prefix") + ".host." + host.Hostname
-
-			case nagios.CmdProcessServiceCheckResult:
-				service, err := nagios.NewServiceFromArgs(args)
-				service.LastCheck = time.Now()
-				if err != nil {
-					log.Warningf("Error when parsing service check: %s")
-				}
-				ev = utils.ServiceToEvent(mq, service)
-				path = c.GlobalString("topic-prefix") + ".service." + service.Hostname
-			default:
-				if cmd == strings.ToUpper(cmd) && len(args) > 0 {
-					path = c.GlobalString("topic-prefix") + ".command"
-					ev.Body, _ = json.Marshal(args)
-				} else {
-					err = fmt.Errorf("unsupported cmd [%s] with args [%+v]", cmd, args)
-				}
-
-			}
-			ev.Headers["client-version"] = "send_check-" + version
-			ev.Headers["command"] = cmd
-			if err != nil {
-				log.Warningf("Error when sending command: %s", err)
-				continue
-			}
-			//event, err = json.Marshal(ev)
-			if err != nil {
-				log.Warningf("Marshall error: %s", err)
-				continue
-			}
-			mq.SendEvent(path, ev)
 		}
 		return nil
 	}
 	app.Run(os.Args)
 
+}
+
+func HandleNagiosCmdLine(mq *zerosvc.Node, c *cli.Context, line string) (err error) {
+	cmd, args, err := nagios.DecodeNagiosCmd(line)
+	if err != nil {
+		return fmt.Errorf("bad cmd: %s", err)
+	}
+	var ev zerosvc.Event
+	var path string
+	switch cmd {
+	case nagios.CmdProcessHostCheckResult:
+		host, err := nagios.NewHostFromArgs(args)
+		host.LastCheck = time.Now()
+		if err != nil {
+			return fmt.Errorf("Error when parsing host check: %s")
+		}
+		ev := utils.HostToEvent(mq, host)
+		ev.Headers["host"] = host.Hostname
+		ev.Body, _ = json.Marshal(host)
+		path = c.GlobalString("topic-prefix") + ".host." + host.Hostname
+
+	case nagios.CmdProcessServiceCheckResult:
+		service, err := nagios.NewServiceFromArgs(args)
+		service.LastCheck = time.Now()
+		if err != nil {
+			return fmt.Errorf("Error when parsing service check: %s")
+		}
+		ev = utils.ServiceToEvent(mq, service)
+		path = c.GlobalString("topic-prefix") + ".service." + service.Hostname
+	default:
+		if cmd == strings.ToUpper(cmd) && len(args) > 0 {
+			path = c.GlobalString("topic-prefix") + ".command"
+			ev.Body, _ = json.Marshal(args)
+		} else {
+			return fmt.Errorf("unsupported cmd [%s] with args [%+v]", cmd, args)
+		}
+
+	}
+	ev.Headers["client-version"] = "send_check-" + version
+	ev.Headers["command"] = cmd
+	return mq.SendEvent(path, ev)
+}
+
+func HandleSendNcsa(mq *zerosvc.Node, c *cli.Context, line string) (err error) {
+	args := strings.Split(line, "\t")
+	var cmd string
+	var path string
+	var ev zerosvc.Event
+	if len(args) == 4 {
+		cmd = nagios.CmdProcessServiceCheckResult
+		service, err := nagios.NewServiceFromArgs(args)
+		service.LastCheck = time.Now()
+		if err != nil {
+			return fmt.Errorf("Error when parsing service check: %s")
+		}
+		ev = utils.ServiceToEvent(mq, service)
+		path = c.GlobalString("topic-prefix") + ".service." + service.Hostname
+
+	} else if len(args) == 3 {
+		cmd = nagios.CmdProcessHostCheckResult
+		host, err := nagios.NewHostFromArgs(args)
+		host.LastCheck = time.Now()
+		if err != nil {
+			return fmt.Errorf("Error when parsing host check: %s")
+		}
+		ev := utils.HostToEvent(mq, host)
+		ev.Headers["host"] = host.Hostname
+		ev.Body, _ = json.Marshal(host)
+		path = c.GlobalString("topic-prefix") + ".host." + host.Hostname
+	} else {
+		return fmt.Errorf("Can't parse [%s]")
+	}
+	ev.Headers["client-version"] = "send_check-" + version
+	ev.Headers["command"] = cmd
+	return mq.SendEvent(path, ev)
+	return nil
 }
