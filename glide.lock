@@ -1,5 +1,5 @@
-hash: 7d92b521267948940f9960947f6e25b8e82ee6faf4d3fdc63bee933e7de067e0
-updated: 2018-01-29T14:41:18.169367617+01:00
+hash: 51b854707f735d9b648b7838ceecb32a057cb798d9a93f46e0d68e6742bf6233
+updated: 2018-01-29T15:39:48.492291875+01:00
 imports:
 - name: github.com/eclipse/paho.mqtt.golang
   version: bab87cde322cf9aec420645d1e9801d0f216f791
@@ -16,7 +16,7 @@ imports:
 - name: github.com/urfave/cli
   version: 75104e932ac2ddb944a6ea19d9f9f26316ff1145
 - name: github.com/zerosvc/go-zerosvc
-  version: e229a8e90859aac0ca07ca8edde466130d3b5b3b
+  version: eab680e14cf4270813f1128950791aca6059aff7
 - name: golang.org/x/net
   version: 5ccada7d0a7ba9aeb5d3aca8d3501b4c2a509fec
   subpackages:
