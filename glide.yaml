@@ -6,4 +6,4 @@ import:
 - package: "github.com/urfave/cli"
   version: origin/master
 - package: github.com/zerosvc/go-zerosvc
-  version: origin/master
+  version: ">= 0.0.2"
