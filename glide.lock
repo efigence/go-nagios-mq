@@ -1,5 +1,5 @@
-hash: fa30200b59054e4072765f297393bee7dca9d2ee7e4730bbff1afec38a5c26c2
-updated: 2018-01-23T14:00:55.399707243+01:00
+hash: 7d92b521267948940f9960947f6e25b8e82ee6faf4d3fdc63bee933e7de067e0
+updated: 2018-01-29T14:41:18.169367617+01:00
 imports:
 - name: github.com/eclipse/paho.mqtt.golang
   version: bab87cde322cf9aec420645d1e9801d0f216f791

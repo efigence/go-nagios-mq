@@ -34,10 +34,11 @@ func main() {
 	app.Version = version
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:   "amqp-url",
-			Value:  "amqp://guest:guest@localhost:5672/",
-			Usage:  "AMQP url-flag",
-			EnvVar: "AMQP_URL",
+			Name:     "amqp-url",
+			Value:    "amqp://guest:guest@localhost:5672/",
+			Usage:    "AMQP url-flag",
+			EnvVar:   "AMQP_URL",
+			FilePath: "/etc/nagios/send_check_url",
 		},
 		cli.StringFlag{
 			Name:  "host, H",
@@ -62,7 +63,7 @@ func main() {
 		hostname, _ := os.Hostname()
 		mq, err := zerosvc.New("send-check@"+hostname,
 			zerosvc.TransportAMQP(
-				c.GlobalString("amqp-url"),
+				strings.TrimSuffix(c.GlobalString("amqp-url"), "\n"),
 				zerosvc.TransportAMQPConfig{
 					EventExchange: c.GlobalString("exchange"),
 				},
