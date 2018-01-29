@@ -116,6 +116,9 @@ func MainLoop(c *cli.Context) error {
 		os.Exit(1)
 	}
 	events, err := node.GetEventsCh(c.GlobalString("topic-prefix") + ".#")
+	if err != nil {
+		return fmt.Errorf("can't get events channel from queue, %s", err)
+	}
 	cmdPipe, err := nagios.NewCmd(c.GlobalString("cmd-file"))
 	if err != nil {
 		log.Errorf("can't open nagios cmd file [%s], %s", c.GlobalString("cmd-file"), err)
