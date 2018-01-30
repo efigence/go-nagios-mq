@@ -18,6 +18,7 @@ import (
 )
 
 var version string
+var debug bool
 var log = logging.MustGetLogger("main")
 var stdout_log_format = logging.MustStringFormatter("%{color:bold}%{time:2006-01-02T15:04:05.0000Z-07:00}%{color:reset}%{color} [%{level:.1s}] %{color:reset}%{shortpkg}[%{longfunc}] %{message}")
 
@@ -27,7 +28,6 @@ func main() {
 	logging.SetBackend(stderrFormatter)
 	logging.SetFormatter(stdout_log_format)
 
-	log.Infof("Starting app version: %s", version)
 	app := cli.NewApp()
 	app.Name = "send_check"
 	app.Description = "Send check results to monitoring system"
@@ -58,8 +58,16 @@ func main() {
 			Name:  "emulate-send-nsca",
 			Usage: "Emulate how send_nsca works (tab-delimited, guess if it is host or service check based on number of elements",
 		},
+		cli.BoolFlag{
+			Name:  "debug",
+			Usage: "Turn on debug",
+		},
 	}
 	app.Action = func(c *cli.Context) error {
+		debug = c.Bool("debug")
+		if debug {
+			log.Infof("Starting app version: %s", version)
+		}
 		hostname, _ := os.Hostname()
 		mq, err := zerosvc.New("send-check@"+hostname,
 			zerosvc.TransportAMQP(
@@ -71,6 +79,7 @@ func main() {
 		)
 		if err != nil {
 			log.Errorf("can't connect to queue: %s", err)
+			os.Exit(1)
 		}
 		scanner := bufio.NewScanner(os.Stdin)
 		var LineHandler func(mq *zerosvc.Node, c *cli.Context, line string) (err error)
@@ -164,6 +173,9 @@ func HandleSendNcsa(mq *zerosvc.Node, c *cli.Context, line string) (err error) {
 	}
 	ev.Headers["client-version"] = "send_check-" + version
 	ev.Headers["command"] = cmd
+	if debug {
+		log.Debugf("Will send [%+v] to [%s]", ev, path)
+	}
 	return mq.SendEvent(path, ev)
 	return nil
 }
