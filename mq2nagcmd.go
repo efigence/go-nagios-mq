@@ -17,7 +17,7 @@ import (
 var version string
 var log = logging.MustGetLogger("main")
 var stdout_log_format = logging.MustStringFormatter("%{color:bold}%{time:2006-01-02T15:04:05.0000Z-07:00}%{color:reset}%{color} [%{level:.1s}] %{color:reset}%{shortpkg}[%{longfunc}] %{message}")
-var end chan bool
+var end = make(chan bool)
 var debug = false
 
 var selfcheck = nagios.NewService()
@@ -132,7 +132,6 @@ func MainLoop(c *cli.Context) error {
 	log.Notice("Connected to MQ and cmd file, entering main loop")
 	stripFqdn := c.Bool("strip-fqdn")
 	go func() {
-
 		for ev := range events {
 			if cmd, ok := ev.Headers["command"]; ok {
 				send := false
@@ -184,6 +183,9 @@ func MainLoop(c *cli.Context) error {
 				log.Warningf("Got unknown event with no 'command' header: %+v|%s", ev, ev.Body)
 			}
 		}
+		log.Notice("MQ disconnected")
+		end <- true
+
 	}()
 	_ = <-end
 	log.Notice("Exiting main loop")
