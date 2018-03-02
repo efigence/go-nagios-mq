@@ -54,6 +54,10 @@ func main() {
 			Value: "monitoring",
 			Usage: "exchange to receive events on",
 		},
+		cli.StringFlag{
+			Name:  "tag",
+			Usage: "Only pass checks matching tag",
+		},
 		cli.BoolFlag{
 			Name:  "emulate-send-nsca",
 			Usage: "Emulate how send_nsca works (tab-delimited, guess if it is host or service check based on number of elements",
@@ -137,6 +141,9 @@ func HandleNagiosCmdLine(mq *zerosvc.Node, c *cli.Context, line string) (err err
 		}
 
 	}
+	if len(c.GlobalString("tag")) > 0 {
+		ev.Headers["tag"] = c.GlobalString("tag")
+	}
 	ev.Headers["client-version"] = "send_check-" + version
 	ev.Headers["command"] = cmd
 	return mq.SendEvent(path, ev)
@@ -170,6 +177,9 @@ func HandleSendNcsa(mq *zerosvc.Node, c *cli.Context, line string) (err error) {
 		path = c.GlobalString("topic-prefix") + ".host." + host.Hostname
 	} else {
 		return fmt.Errorf("Can't parse [%s]")
+	}
+	if len(c.GlobalString("tag")) > 0 {
+		ev.Headers["tag"] = c.GlobalString("tag")
 	}
 	ev.Headers["client-version"] = "send_check-" + version
 	ev.Headers["command"] = cmd
