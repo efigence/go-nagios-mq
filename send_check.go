@@ -56,7 +56,7 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:  "tag",
-			Usage: "Only pass checks matching tag",
+			Usage: "Add tag to the event",
 		},
 		cli.BoolFlag{
 			Name:  "emulate-send-nsca",
