@@ -57,6 +57,10 @@ func main() {
 			Value: "check.results",
 			Usage: "topic prefix",
 		},
+		cli.StringFlag{
+			Name:  "tag",
+			Usage: "Only pass checks matching tag",
+		},
 		cli.BoolFlag{
 			Name:  "shared-queue,shared",
 			Usage: "Whether queue should be shared between instance. Also switches it to persistent mode",
@@ -101,6 +105,8 @@ func main() {
 
 func MainLoop(c *cli.Context) error {
 	hostname, _ := os.Hostname()
+	matchTag := c.GlobalString("tag")
+	filterTag := len(matchTag) > 0
 	node, err := zerosvc.New("nagcmd-receiver@"+hostname,
 		zerosvc.TransportAMQP(
 			c.GlobalString("amqp-url"),
@@ -134,6 +140,12 @@ func MainLoop(c *cli.Context) error {
 	go func() {
 		for ev := range events {
 			if cmd, ok := ev.Headers["command"]; ok {
+				if filterTag && matchTag != ev.Headers["tag"] {
+					if debug {
+						log.Debugf("Skipping event %+v, did not match tag %s", ev, matchTag)
+					}
+					continue
+				}
 				send := false
 				var cmdArgs string
 				switch cmd {
