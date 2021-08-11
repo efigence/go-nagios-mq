@@ -117,7 +117,7 @@ func HandleNagiosCmdLine(mq *zerosvc.Node, c *cli.Context, line string) (err err
 		host, err := nagios.NewHostFromArgs(args)
 		host.LastCheck = time.Now()
 		if err != nil {
-			return fmt.Errorf("Error when parsing host check: %s")
+			return fmt.Errorf("Error when parsing host check: %s", err)
 		}
 		ev := utils.HostToEvent(mq, host)
 		ev.Headers["host"] = host.Hostname
@@ -128,7 +128,7 @@ func HandleNagiosCmdLine(mq *zerosvc.Node, c *cli.Context, line string) (err err
 		service, err := nagios.NewServiceFromArgs(args)
 		service.LastCheck = time.Now()
 		if err != nil {
-			return fmt.Errorf("Error when parsing service check: %s")
+			return fmt.Errorf("Error when parsing service check: %s", err)
 		}
 		ev = utils.ServiceToEvent(mq, service)
 		path = c.GlobalString("topic-prefix") + ".service." + service.Hostname
@@ -159,7 +159,7 @@ func HandleSendNcsa(mq *zerosvc.Node, c *cli.Context, line string) (err error) {
 		service, err := nagios.NewServiceFromArgs(args)
 		service.LastCheck = time.Now()
 		if err != nil {
-			return fmt.Errorf("Error when parsing service check: %s")
+			return fmt.Errorf("Error when parsing service check: %s", err)
 		}
 		ev = utils.ServiceToEvent(mq, service)
 		path = c.GlobalString("topic-prefix") + ".service." + service.Hostname
@@ -169,7 +169,7 @@ func HandleSendNcsa(mq *zerosvc.Node, c *cli.Context, line string) (err error) {
 		host, err := nagios.NewHostFromArgs(args)
 		host.LastCheck = time.Now()
 		if err != nil {
-			return fmt.Errorf("Error when parsing host check: %s")
+			return fmt.Errorf("Error when parsing host check: %s", err)
 		}
 		ev := utils.HostToEvent(mq, host)
 		ev.Headers["host"] = host.Hostname

@@ -12,7 +12,6 @@ DEADJOE
 _vendor/
 vendor/
 *\.test
-send_check
 tags
 TAGS
 
@@ -45,7 +44,8 @@ _testmain.go
 *.prof
 *.out
 *.static
-mq2nagcmd
+/mq2nagcmd
+/send_check
 *.arm
 *.arm64
 *.386
