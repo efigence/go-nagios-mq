@@ -209,7 +209,7 @@ func RunSelfcheck(node *zerosvc.Node, path string) {
 		ev := utils.ServiceToEvent(node, selfcheck)
 		ev.Headers["client-version"] = "mq2nagcmd-" + version
 		if debug {
-			log.Debugf("sending selfcheck to [%s]", path)
+			log.Debugf("sending selfcheck to %s[%s]", selfcheck.Hostname, path)
 		}
 		ev.Prepare()
 		node.SendEvent(path, ev)

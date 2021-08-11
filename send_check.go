@@ -176,7 +176,7 @@ func HandleSendNcsa(mq *zerosvc.Node, c *cli.Context, line string) (err error) {
 		ev.Body, _ = json.Marshal(host)
 		path = c.GlobalString("topic-prefix") + ".host." + host.Hostname
 	} else {
-		return fmt.Errorf("Can't parse [%s][%d]",line, len(args))
+		return fmt.Errorf("Can't parse [%s][%d]", line, len(args))
 	}
 	if len(c.GlobalString("tag")) > 0 {
 		ev.Headers["tag"] = c.GlobalString("tag")

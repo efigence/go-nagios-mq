@@ -1,9 +1,0 @@
-package: github.com/efigence/go-nagios-mq
-import:
-- package: github.com/op/go-logging
-- package: github.com/efigence/go-nagios
-  version: ">= 0.0.2"
-- package: "github.com/urfave/cli"
-  version: origin/master
-- package: github.com/zerosvc/go-zerosvc
-  version: ">= 0.0.2"
