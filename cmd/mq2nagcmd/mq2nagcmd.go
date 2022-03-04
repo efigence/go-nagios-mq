@@ -135,7 +135,7 @@ func MainLoop(c *cli.Context) error {
 		topic := c.GlobalString("topic-prefix") +
 			".service." + selfcheck.Hostname
 		log.Noticef("Generating selfcheck event every minute to %s", topic)
-		go RunSelfcheck(node, topic)
+		go RunSelfcheck(node, c.GlobalString("tag"), topic)
 	}
 	log.Notice("Connected to MQ and cmd file, entering main loop")
 	stripFqdn := c.Bool("strip-fqdn")
@@ -206,7 +206,7 @@ func MainLoop(c *cli.Context) error {
 	return nil
 }
 
-func RunSelfcheck(node *zerosvc.Node, path string) {
+func RunSelfcheck(node *zerosvc.Node, tag string, path string) {
 	for {
 		ev := utils.ServiceToEvent(node, selfcheck)
 		ev.Headers["client-version"] = "mq2nagcmd-" + version
@@ -220,6 +220,9 @@ func RunSelfcheck(node *zerosvc.Node, path string) {
 		err := ev.Prepare()
 		if err != nil {
 			log.Errorf("error preparing selfcheck: %s")
+		}
+		if len(tag) > 0 {
+			ev.Headers["tag"] = tag
 		}
 		err = node.SendEvent(path, ev)
 		if err != nil {
