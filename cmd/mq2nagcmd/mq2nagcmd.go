@@ -215,8 +215,14 @@ func RunSelfcheck(node *zerosvc.Node, path string) {
 				path,
 			)
 		}
-		ev.Prepare()
-		node.SendEvent(path, ev)
+		err := ev.Prepare()
+		if err != nil {
+			log.Errorf("error preparing selfcheck: %s")
+		}
+		err = node.SendEvent(path, ev)
+		if err != nil {
+			log.Errorf("error sending selfcheck: %s")
+		}
 		time.Sleep(time.Minute)
 	}
 }
