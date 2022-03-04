@@ -133,7 +133,9 @@ func MainLoop(c *cli.Context) error {
 	selfcheck.UpdateStatus(nagios.StateOk, fmt.Sprintf("Running v%s", version))
 	if !c.Bool("disable-selfcheck") {
 		log.Notice("Generating selfcheck event every minute")
-		go RunSelfcheck(node, c.GlobalString("topic-prefix")+".service.mq2nagcmd")
+		go RunSelfcheck(node,
+			c.GlobalString("topic-prefix")+
+				".service."+selfcheck.Hostname)
 	}
 	log.Notice("Connected to MQ and cmd file, entering main loop")
 	stripFqdn := c.Bool("strip-fqdn")
